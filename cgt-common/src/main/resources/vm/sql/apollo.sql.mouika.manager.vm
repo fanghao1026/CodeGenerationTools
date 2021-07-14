@@ -1,0 +1,2 @@
+delete from appnamespace where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from app where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');

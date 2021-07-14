@@ -1,0 +1,189 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: ${appName}
+  name: ${appName}
+  namespace: prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ${appName}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ${appName}
+    spec:
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+        - name: shdocker
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: ${appName}
+          image: registry.shdocker.tuya-inc.top/k8s_dev/app/${appName}:v20200415_basic
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: CONFIG_ENV
+              value: pro
+            - name: PROJECT_NAME
+              value: ${appName}
+            - name: WEBPORT
+              value: "${webPort}"
+            - name: JVM
+              value: "1000"
+            - name: JVMMN
+              value: "500"
+            - name: TZ
+              value: Asia/Shanghai
+            - name: ISKUBERAPP
+              value: "true"
+            - name: LANG
+              value: en_US.UTF-8
+            - name: LOG_KAFKA_BROKERS
+              value: '["10.102.0.41:9092,10.102.0.42:9092,10.102.0.43:9092"]'
+            - name: LOGSTASH_URL
+              value: "logstash.prod.svc.aiot.local"
+            - name: SENTINEL_URL
+              value: "sentinel.prod.svc.aiot.local:8181"
+            - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
+              value: "skywalking.prod.svc.aiot.local:11800"
+            - name: SW_LOGGING_LEVEL
+              value: INFO
+            - name: JVM_CUSTOM
+              value: "-javaagent:/home/docker/agent/skywalking-agent.jar"
+          ports:
+            - containerPort: ${dubboPort}
+              name: dubbo
+              protocol: TCP
+            - containerPort: ${webPort}
+              name: web
+              protocol: TCP
+            - containerPort: ${webPort}
+              name: health
+          command:
+            - sh
+            - /home/docker/start-jar.sh
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: 1500M
+            requests:
+              cpu: "0.5"
+              memory: 600M
+          volumeMounts:
+            - mountPath: /home/docker/logs
+              name: log
+              subPathExpr: $(POD_NAME)
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /hc.do?a=healthCheck
+              port: health
+            initialDelaySeconds: 300
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /hc.do?a=healthCheck
+              port: health
+            initialDelaySeconds: 300
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
+        - command:
+            - sh
+            - -c
+            - while [ true ];do DATE=$(date +%Y-%m-%d\ %H:%M:%S) && echo $DATE && sleep 60;done
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+          image: registry.shdocker.tuya-inc.top/be-base/tool:v2.0.2
+          imagePullPolicy: IfNotPresent
+          name: tool
+          resources:
+            limits:
+              cpu: 150m
+              memory: 150Mi
+            requests:
+              cpu: 30m
+              memory: 30Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /home/docker/logs
+              name: log
+      volumes:
+        - name: filebeat-config
+          configMap:
+            name: filebeat-${appName}
+        - name: filebeat
+          hostPath:
+            path: /mnt/filebeat/configs
+            type: ""
+        - name: log
+          hostPath:
+            path: /mnt/logs/apps/${appName}
+            type: ""
+
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - if [ ! -d "/home/docker/logs/$POD_NAME" ];then mkdir -p /home/docker/logs/$POD_NAME;fi;
+              chown docker:docker -R /home/docker/logs; cp -f /home/docker/input-${appName}.yml
+              /home/docker/configs/
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+          image: registry.shdocker.tuya-inc.top/be-base/tool:v1.0.4r
+          imagePullPolicy: IfNotPresent
+          name: init
+          resources: {}
+          volumeMounts:
+            - mountPath: /home/docker/input-${appName}.yml
+              name: filebeat-config
+              subPath: input.yml
+            - mountPath: /home/docker/configs
+              name: filebeat
+            - mountPath: /home/docker/logs
+              name: log

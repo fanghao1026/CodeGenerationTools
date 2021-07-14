@@ -1,0 +1,10 @@
+delete from appnamespace where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from app where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from cluster where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from commit where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from grayreleaserule where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from instance where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from instanceconfig where ConfigAppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from namespace where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from release2 where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
+delete from releasehistory where AppId in ('${app1}','${app2}','${app3}','${app4}','${app5}','${app6}','${app7}');
