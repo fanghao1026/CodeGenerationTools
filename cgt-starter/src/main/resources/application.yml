@@ -4,4 +4,10 @@ server:
 cyh:
   logPath: /Users/nemo/Desktop/log
 
+mybatis:
+  mapperLocations: classpath*:mapper/*Mapper.xml
+  configLocation: classpath:mybatis/mybatis-config.xml
 
+spring:
+  profiles:
+    active: druid
